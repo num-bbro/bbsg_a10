@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <title>{{name}}</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+
+{% include "blueTable.css" %}
+
+######### HEAD STYLE #######
+.head_1 {
+    text-align: left;
+    width: 30px;
+}
+.head_2 {
+    text-align: left;
+    width: 60px;
+}
+.head_3 {
+    text-align: left;
+    width: 80px;
+}
+.head_4 {
+    text-align: left;
+    width: 100px;
+}
+.head_5 {
+    text-align: left;
+    width: 60px;
+}
+.head_6 {
+    text-align: left;
+    width: 70px;
+}
+.head_x {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  width: 50px;
+}
+{%~ for y in 0..=SSHOW_YEAR_END-SSHOW_YEAR_BEG %}
+.hdyr_{{y}} {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  color: #FFFFFF;
+  transform: rotate(180deg);
+}
+{%- endfor %}
+######### CELL STYLE #######
+.cell_s {
+    text-align: left;
+}
+.cell_1 {
+    text-align: left;
+}
+.cell_2 {
+    text-align: left;
+}
+.cell_3 {
+    text-align: left;
+}
+.cell_4 {
+    text-align: left;
+}
+.cell_5 {
+    text-align: left;
+}
+
+.cell_x {
+    text-align: center;
+}
+{%~ for y in 0..=SSHOW_YEAR_END-SSHOW_YEAR_BEG %}
+.cell_{{-y-}} {
+    text-align: right;
+    width: 40px;
+}
+{%- endfor %}
+
+.field {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  width: 20px;
+}
+</style>
+</head>
+
+<body>
+<div>
+{% include "sbb-menu.html" %}
+</div>
+
+<!-- choose field -->
+<table class="blueTable">
+<tr>
+{% for h in shwfld %}
+{% let hh = format!("{h:?}") %}
+<th class="field">
+  <a href="?fld={{hh}}&sbid={{sbid}}&fdid={{fdid}}">{{hh}}</a>
+</th>
+{% endfor %}
+</tr>
+</table>
+<div>{{name}}
+&nbsp;&nbsp;&nbsp; 
+[ field:{{fld}} ]
+&nbsp;&nbsp;&nbsp; 
+[ feeder:{{fdid}} ]
+&nbsp;&nbsp;&nbsp;  
+[
+{% for fdid0 in &sbinf.feeders %}
+{% if fdid0==&fdid %}
+<b style="color: green;">{{fdid0}}</b>
+{% else %}
+  <a href="?fld={{fld}}&sbid={{sbid}}&fdid={{fdid0}}">{{fdid0}}</a>
+{% endif %}
+{% endfor %}
+]
+  <a href="fdw01?fdid={{fdid}}">ROAD</a>
+  <a href="fdw02?fdid={{fdid}}">SATEL</a>
+  <a href="fdw03?fdid={{fdid}}">LOAD</a>
+</div>
+<table class="blueTable">
+<thead>
+
+<tr>
+<th class="head_1">NO</th>
+<th class="head_2">ฟีดเดอร์</th>
+<th class="head_3">หม้อแปลง</th>
+<th class="head_4">กฟส</th>
+<th class="head_5"></th>
+<th class="head_6">รวม</th>
+{%~ for y in 0..=SSHOW_YEAR_END-SSHOW_YEAR_BEG %}
+<td class="hdyr_{{y}}">{{y+2026}}</td>
+{% endfor ~%}
+
+</tr>
+
+</thead>
+<tbody>
+
+{% for rw in assv.iter() %}
+<tr>
+  <td class="cell_s">{{loop.index}}</td>
+  <td class="cell_2">{{rw.fdid}}</td>
+  <td class="cell_3"><a href="/tr01?sbid={{rw.sbid}}">{{rw.peano}}</a></td>
+  <td class="cell_4">{{rw.aoj}}</td>
+  {% let (x,y) = rw.n1d.n1d_2_latlon() %}
+  {% let utm = format!("{x},{y}") %}
+  {% let url = format!("https://www.google.com/maps/search/?api=1&query={x},{y}") %}
+  <td class="cell_5">
+    <a href="{{url}}" target="_blank">
+    {{utm}}
+    </a>
+  </td>
+<td class="cell_x">{{rw.v[se_fld.tousz()].v.pan(3)}}</td>
+{% for vv in rw.vy[se_fld.tousz()] %}
+<td class="cell_x">{{vv.pan(3)}}</td>
+{% endfor %}
+</tr>
+
+{% endfor %}
+</tbody>
+</table>
+
+<script>
+const inps = document.querySelectorAll("input");
+for (let i = 0; i < inps.length; i++) {
+  inps[i].style.backgroundColor = "red";
+}
+</script>
+ </body>
+</html>
+

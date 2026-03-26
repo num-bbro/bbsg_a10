@@ -1,0 +1,725 @@
+//use crate::ben2::ECON_GRW_RATE;
+use crate::dcl::ProcEngine;
+use crate::dcl::EV_PRV_ADJ_2;
+use crate::dcl::*;
+use crate::p01::ev_distr;
+use crate::p03::p03_load_lp;
+use crate::p04::SubFeedTrans;
+use crate::p08::ld_sub_info;
+use crate::utl::*;
+use num::pow::Pow;
+use sglib04::ld1::p13_am_po_de;
+use sglib04::ld1::p13_aoj;
+use sglib04::ld1::p13_cnl_mt;
+use sglib04::ld1::p13_cnl_trs;
+use sglib04::ld1::p13_ev_distr;
+use sglib04::ld1::p13_fd_rep_lp;
+use sglib04::ld1::p13_lv_solar;
+use sglib04::ld1::p13_mt2bil;
+use sglib04::ld1::p13_mt_bil;
+use sglib04::ld1::p13_mu_po_de;
+use sglib04::ld1::p13_re_plan;
+use sglib04::ld1::p13_sb_in_re;
+use sglib04::ld1::p13_sb_in_spp;
+use sglib04::ld1::p13_sb_in_vspp;
+use sglib04::ld1::p13_sb_rep_lp;
+use sglib04::ld1::p13_spp;
+use sglib04::ld1::p13_tr_in_amp;
+use sglib04::ld1::p13_tr_in_aoj;
+use sglib04::ld1::p13_tr_in_mun;
+use sglib04::ld1::p13_tr_in_sol;
+use sglib04::ld1::p13_tr_in_vol;
+use sglib04::ld1::p13_tr_in_zn;
+use sglib04::ld1::p13_volta;
+use sglib04::ld1::p13_vspp;
+use sglib04::ld1::p13_zone;
+use sglib04::ld1::EV_PRV_ADJ_1;
+use strum::IntoEnumIterator;
+use crate::utl4::Archi;
+use crate::asm::ASM::*;
+use crate::stx2::ass_calc;
+
+//pub const ECON_GRW_RATE: f32 = 0.00f32;
+
+impl VarType {
+    pub fn tousz(&self) -> usize {
+        self.clone() as usize
+    }
+}
+
+impl PeaAssVar {
+    pub fn from(n1d: u64) -> Self {
+        let mut v = Vec::<AssVar>::new();
+        let mut vy = Vec::<Vec<f32>>::new();
+        for vt in VarType::iter() {
+            let st = match vt {
+                VarType::MaxPosPowSub => SumType::Max,
+                VarType::MaxNegPowSub => SumType::Max,
+                VarType::MaxPosPowFeeder => SumType::Max,
+                VarType::MaxNegPowFeeder => SumType::Max,
+                VarType::MaxPosDiffFeeder => SumType::Max,
+                VarType::MaxNegDiffFeeder => SumType::Max,
+                VarType::UnbalPowRate => SumType::Max,
+                _ => SumType::Sum,
+            };
+            v.push(AssVar::new(vt, st));
+            let vv = Vec::<f32>::new();
+            vy.push(vv);
+        }
+        PeaAssVar {
+            n1d,
+            v,
+            vy,
+            ..Default::default()
+        }
+    }
+    pub fn div(&mut self, o: f32) {
+        if o == 0f32 {
+            return;
+        }
+        for v in self.v.iter_mut() {
+            v.v /= o;
+        }
+    }
+    pub fn nor(&mut self, o: &PeaAssVar) {
+        for (v, o) in self.v.iter_mut().zip(o.v.iter()) {
+            v.v /= z2o(o.v);
+        }
+    }
+    pub fn copy(&mut self, o: &PeaAssVar, t: VarType) {
+        self.v[t.clone() as usize].v = o.v[t.clone() as usize].v;
+    }
+    pub fn add(&mut self, o: &PeaAssVar) {
+        for (v, o) in self.v.iter_mut().zip(o.v.iter()) {
+            match v.s {
+                SumType::Sum => v.v += o.v,
+                SumType::Max => v.v = v.v.max(o.v),
+                SumType::Min => v.v = v.v.min(o.v),
+            }
+        }
+        for (v, (vy, oy)) in self.v.iter().zip(self.vy.iter_mut().zip(o.vy.iter())) {
+            if vy.is_empty() && oy.len() > vy.len() {
+                vy.retain(|&_| false);
+                let mut oya = oy.clone();
+                vy.append(&mut oya);
+            } else if vy.len() == oy.len() && let SumType::Sum = v.s {
+                for (vv, ov) in vy.iter_mut().zip(oy.iter()) {
+                    *vv += *ov;
+                }
+            }
+        }
+    }
+    pub fn add_ex(&mut self, o: &PeaAssVar, x: &[usize]) {
+        for (i,(v, o)) in self.v.iter_mut().zip(o.v.iter()).enumerate() {
+            if x.contains(&i) {
+                v.v = o.v;
+                continue;
+            }
+            match v.s {
+                SumType::Sum => v.v += o.v,
+                SumType::Max => v.v = v.v.max(o.v),
+                SumType::Min => v.v = v.v.min(o.v),
+            }
+        }
+        for (i,(v, (vy, oy))) in self.v.iter().zip(self.vy.iter_mut().zip(o.vy.iter())).enumerate() {
+            if x.contains(&i) { 
+                vy.retain(|&_| false);
+                vy.append(&mut oy.clone());
+                continue;
+            }
+            if vy.is_empty() && oy.len() > vy.len() {
+                vy.retain(|&_| false);
+                //let mut oya = oy.clone();
+                vy.append(&mut oy.clone());
+            } else if vy.len() == oy.len() 
+                && let SumType::Sum = v.s {
+                if x.contains(&i) { continue; }
+                for (vv, ov) in vy.iter_mut().zip(oy.iter()) {
+                    *vv += *ov;
+                }
+            }
+        }
+    }
+    pub fn sum_yr(&mut self, vt: VarType, arc: &Archi) {
+        self.v[vt.tousz()].v = self.vy[vt.tousz()].iter().sum();
+        self.v[vt.tousz()].npv = self.vy[vt.tousz()]
+            .iter()
+            .enumerate()
+            .map(|(y, v)| v / Pow::pow(1.0 + arc.v(ECON_GRW_RATE), y as f32))
+            .sum::<f32>();
+    }
+    pub fn add1(&mut self, o: &PeaAssVar) -> String {
+        for (v, o) in self.v.iter_mut().zip(o.v.iter()) {
+            match v.s {
+                SumType::Sum => v.v += o.v,
+                SumType::Max => v.v = v.v.max(o.v),
+                SumType::Min => v.v = v.v.min(o.v),
+            }
+        }
+        for (vy, oy) in self.vy.iter_mut().zip(o.vy.iter()) {
+            if vy.is_empty() && oy.len() > vy.len() {
+                let mut oya = oy.clone();
+                vy.append(&mut oya);
+            } else if vy.len() == oy.len() {
+                for (vv, ov) in vy.iter_mut().zip(oy.iter()) {
+                    *vv += *ov;
+                }
+            }
+        }
+        String::new()
+    }
+    pub fn max(&mut self, o: &PeaAssVar) {
+        if self.set == 0 {
+            self.set += 1;
+            for (v, o) in self.v.iter_mut().zip(o.v.iter()) {
+                v.v = o.v;
+            }
+            return;
+        }
+        self.set += 1;
+        for (v, o) in self.v.iter_mut().zip(o.v.iter()) {
+            v.v = v.v.max(o.v);
+        }
+    }
+
+    pub fn min(&mut self, o: &PeaAssVar) {
+        if self.set == 0 {
+            self.set += 1;
+            for (v, o) in self.v.iter_mut().zip(o.v.iter()) {
+                v.v = o.v;
+            }
+        }
+        self.set += 1;
+        for (v, o) in self.v.iter_mut().zip(o.v.iter()) {
+            v.v = v.v.max(o.v);
+        }
+    }
+    pub fn weigh(&mut self, o: &PeaAssVar) {
+        for (v, o) in self.v.iter_mut().zip(o.v.iter()) {
+            v.v *= o.v;
+        }
+    }
+    pub fn sum(&mut self) {
+        self.res = self.v.iter().map(|v| v.v).sum();
+    }
+}
+
+impl PeaTrans {
+    pub fn from_cmt(&mut self, cmt: &sglib04::geo1::CnlData) {
+        self.tr_tag = cmt.tr_tag.clone();
+        self.tr_fid = cmt.tr_fid.clone();
+        self.tr_lt = cmt.tr_lt;
+        self.tr_ln = cmt.tr_ln;
+        self.tr_cd = cmt.tr_cd;
+        self.tr_aoj = cmt.tr_aoj.clone();
+        self.tr_pea = cmt.tr_pea.clone();
+        self.tr_kva = cmt.tr_kva;
+        self.tr_own = cmt.tr_own.clone();
+        self.tr_loc = cmt.tr_loc.clone();
+        self.tr_n1d = cmt.tr_n1d;
+    }
+}
+
+impl PeaMeter {
+    pub fn from_cmt(&mut self, cmt: &sglib04::geo1::CnlData) {
+        self.mt_ins = cmt.mt_ins.clone();
+        self.mt_pea = cmt.mt_pea.clone();
+        self.mt_tag = cmt.mt_tag.clone();
+        self.mt_phs = cmt.mt_phs.clone();
+        self.mt_x = cmt.mt_x;
+        self.mt_y = cmt.mt_y;
+        self.mt_lt = cmt.mt_lt;
+        self.mt_ln = cmt.mt_ln;
+        self.mt_aoj = cmt.mt_aoj.clone();
+        self.tr_tag = cmt.tr_tag.clone();
+        self.tr_fid = cmt.tr_fid.clone();
+        self.tr_lt = cmt.tr_lt;
+        self.tr_ln = cmt.tr_ln;
+        self.tr_cd = cmt.tr_cd;
+        self.tr_aoj = cmt.tr_aoj.clone();
+        self.tr_pea = cmt.tr_pea.clone();
+        self.tr_kva = cmt.tr_kva;
+        self.tr_own = cmt.tr_own.clone();
+        self.tr_loc = cmt.tr_loc.clone();
+        self.tr_n1d = cmt.tr_n1d;
+        self.mt_n1d = cmt.mt_n1d;
+        self.ar = cmt.ar.clone();
+        self.ly = cmt.ly.clone();
+        self.ix = cmt.ix;
+    }
+    pub fn from_bil(&mut self, bil: &sglib04::geo1::MeterBill) {
+        self.trsg = bil.trsg.clone();
+        self.pea = bil.pea.clone();
+        self.ca = bil.ca.clone();
+        self.inst = bil.inst.clone();
+        self.rate = bil.rate.clone();
+        self.volt = bil.volt.clone();
+        self.mru = bil.mru.clone();
+        self.mat = bil.mat.clone();
+        self.main = bil.main.clone();
+        self.kwh15 = bil.kwh15;
+        self.kwh18 = bil.kwh18;
+        self.amt19 = bil.amt19;
+        self.ar = bil.ar.clone();
+        self.idx = bil.idx;
+        self.meth = bil.meth;
+    }
+}
+
+impl AssVar {
+    pub fn val(v: f32) -> AssVar {
+        AssVar {
+            t: VarType::None,
+            s: SumType::Sum,
+            v,
+            ..Default::default()
+        }
+    }
+    pub fn new(t: VarType, s: SumType) -> AssVar {
+        AssVar {
+            t,
+            s,
+            ..Default::default()
+        }
+    }
+}
+
+impl Geo for u64 {
+    fn n1d_2_utm(&self) -> (f32, f32) {
+        sglib04::geo1::n1d_2_utm(*self)
+    }
+    fn n1d_2_latlon(&self) -> (f32, f32) {
+        let (x, y) = sglib04::geo1::n1d_2_utm(*self);
+        sglab02_lib::sg::mvline::utm_latlong(x, y)
+    }
+}
+
+impl Pan for f32 {
+    fn san(v: &str) -> String {
+        v.as_bytes()
+            .rchunks(3)
+            .rev()
+            .map(std::str::from_utf8)
+            .collect::<Result<Vec<&str>, _>>()
+            .unwrap()
+            .join(",")
+    }
+    fn pan0(&self) -> String {
+        let v = format!("{self:.2}");
+        let f = v[..v.len() - 3].to_string();
+        let v = Self::san(&f);
+        v.to_string()
+    }
+    fn pan2(&self) -> String {
+        let v = format!("{self:.2}");
+        let n = v[v.len() - 3..].to_string();
+        let f = v[..v.len() - 3].to_string();
+        let v = Self::san(&f);
+        format!("{v}{n}")
+    }
+    fn pan3(&self) -> String {
+        let v = format!("{self:.3}");
+        let n = v[v.len() - 4..].to_string();
+        let f = v[..v.len() - 4].to_string();
+        let v = Self::san(&f);
+        format!("{v}{n}")
+    }
+    fn pan(&self, i: i32) -> String {
+        let v = match i {
+            4 => format!("{self:.4}"),
+            3 => format!("{self:.3}"),
+            2 => format!("{self:.2}"),
+            1 => format!("{self:.1}"),
+            _ => format!("{self:.0}"),
+        };
+        if i > 0 && i <= 4 {
+            let n = v[v.len() - (i as usize + 1)..].to_string();
+            let f = v[..v.len() - (i as usize + 1)].to_string();
+            let v = Self::san(&f);
+            format!("{v}{n}")
+        } else {
+            Self::san(&v)
+        }
+    }
+}
+
+impl SubAssObj2 {
+    pub fn sum(&mut self) {
+        self.sum = self.ev1
+            + self.ev2
+            + self.ev3
+            + self.ev4
+            + self.ev5
+            + self.re1
+            + self.re2
+            + self.re3
+            + self.en1
+            + self.en2
+            + self.en3
+            + self.en4;
+    }
+}
+
+use sglib04::geo1::CnlData;
+use sglib04::geo1::MeterBill;
+use sglib04::geo2::CnlTrans;
+use sglib04::geo2::SppData;
+use sglib04::geo2::VoltaStation;
+use sglib04::geo2::VsppData;
+use sglib04::geo3::GisZone;
+use sglib04::geo3::PopuDenseSave;
+use sglib04::geo4::LowVoltSolar;
+use sglib04::geo4::REPlan;
+use sglib04::ld1::RepLoadProf;
+
+impl ProcEngine {
+    pub fn subs0(ar: &str) -> Vec<SubFeedTrans> {
+        let fnm = format!("/mnt/e/CHMBACK/pea-data/data2/p11_{ar}_sb_fd_tr.bin");
+        let bytes = std::fs::read(fnm).unwrap();
+        let (subs, _): (Vec<SubFeedTrans>, usize) =
+            bincode::decode_from_slice(&bytes[..], bincode::config::standard()).unwrap();
+        subs
+    }
+    pub fn ctrs0(ar: &str) -> Vec<CnlTrans> {
+        p13_cnl_trs(ar).unwrap()
+    }
+    pub fn cmts0(ar: &str) -> Vec<CnlData> {
+        p13_cnl_mt(ar).unwrap()
+    }
+    pub fn bils0(ar: &str) -> Vec<MeterBill> {
+        p13_mt_bil(ar).unwrap()
+    }
+    pub fn m2bs0(ar: &str) -> Vec<Vec<usize>> {
+        p13_mt2bil(ar).unwrap()
+    }
+    pub fn vols0(ar: &str) -> Vec<VoltaStation> {
+        p13_volta(ar).unwrap()
+    }
+    pub fn votr0(ar: &str) -> Vec<Vec<usize>> {
+        p13_tr_in_vol(ar).unwrap()
+    }
+    pub fn spps0(ar: &str) -> Vec<SppData> {
+        p13_spp(ar).unwrap()
+    }
+    pub fn spsb0(ar: &str) -> Vec<Vec<usize>> {
+        p13_sb_in_spp(ar).unwrap()
+    }
+    pub fn vsps0(ar: &str) -> Vec<VsppData> {
+        p13_vspp(ar).unwrap()
+    }
+    pub fn vssb0(ar: &str) -> Vec<Vec<usize>> {
+        p13_sb_in_vspp(ar).unwrap()
+    }
+    pub fn zons0(ar: &str) -> Vec<GisZone> {
+        p13_zone(ar).unwrap()
+    }
+    pub fn zntr0(ar: &str) -> Vec<Vec<usize>> {
+        p13_tr_in_zn(ar).unwrap()
+    }
+    pub fn aojs0(ar: &str) -> Vec<GisAoj> {
+        p13_aoj(ar).unwrap()
+    }
+    pub fn aotr0(ar: &str) -> Vec<Vec<usize>> {
+        p13_tr_in_aoj(ar).unwrap()
+    }
+    pub fn amps0(ar: &str) -> Vec<PopuDenseSave> {
+        p13_am_po_de(ar).unwrap()
+    }
+    pub fn amtr0(ar: &str) -> Vec<Vec<usize>> {
+        p13_tr_in_amp(ar).unwrap()
+    }
+    pub fn muni0(ar: &str) -> Vec<PopuDenseSave> {
+        p13_mu_po_de(ar).unwrap()
+    }
+    pub fn mutr0(ar: &str) -> Vec<Vec<usize>> {
+        p13_tr_in_mun(ar).unwrap()
+    }
+    pub fn repl0(ar: &str) -> Vec<REPlan> {
+        p13_re_plan(ar).unwrap()
+    }
+    pub fn resb0(ar: &str) -> Vec<Vec<usize>> {
+        p13_sb_in_re(ar).unwrap()
+    }
+    pub fn sblp0(ar: &str) -> Vec<RepLoadProf> {
+        p13_sb_rep_lp(ar).unwrap()
+    }
+    pub fn fdlp0(ar: &str) -> Vec<RepLoadProf> {
+        p13_fd_rep_lp(ar).unwrap()
+    }
+    pub fn sola0(ar: &str) -> Vec<LowVoltSolar> {
+        let Ok(sola) = p13_lv_solar(ar) else {
+            return Vec::<_>::new();
+        };
+        sola
+    }
+    pub fn sotr0(ar: &str) -> Vec<Vec<usize>> {
+        let Ok(sotr) = p13_tr_in_sol(ar) else {
+            return Vec::<_>::new();
+        };
+        sotr
+    }
+}
+
+impl ProcEngine {
+    fn subs(&mut self, ar: &str) {
+        let fnm = format!("/mnt/e/CHMBACK/pea-data/data2/p11_{ar}_sb_fd_tr.bin");
+        let bytes = std::fs::read(fnm).unwrap();
+        let (subs, _): (Vec<SubFeedTrans>, usize) =
+            bincode::decode_from_slice(&bytes[..], bincode::config::standard()).unwrap();
+        self.subs = subs;
+    }
+    fn ctrs(&mut self, ar: &str) {
+        self.ctrs = p13_cnl_trs(ar).unwrap();
+    }
+    fn cmts(&mut self, ar: &str) {
+        self.cmts = p13_cnl_mt(ar).unwrap();
+    }
+    fn bils(&mut self, ar: &str) {
+        self.bils = p13_mt_bil(ar).unwrap();
+    }
+    fn m2bs(&mut self, ar: &str) {
+        self.m2bs = p13_mt2bil(ar).unwrap();
+    }
+    fn vols(&mut self, ar: &str) {
+        self.vols = p13_volta(ar).unwrap();
+    }
+    fn votr(&mut self, ar: &str) {
+        self.votr = p13_tr_in_vol(ar).unwrap();
+    }
+    fn spps(&mut self, ar: &str) {
+        self.spps = p13_spp(ar).unwrap();
+    }
+    fn spsb(&mut self, ar: &str) {
+        self.spsb = p13_sb_in_spp(ar).unwrap();
+    }
+    fn vsps(&mut self, ar: &str) {
+        self.vsps = p13_vspp(ar).unwrap();
+    }
+    fn vssb(&mut self, ar: &str) {
+        self.vssb = p13_sb_in_vspp(ar).unwrap();
+    }
+    fn zons(&mut self, ar: &str) {
+        self.zons = p13_zone(ar).unwrap();
+    }
+    fn zntr(&mut self, ar: &str) {
+        self.zntr = p13_tr_in_zn(ar).unwrap();
+    }
+    fn aojs(&mut self, ar: &str) {
+        self.aojs = p13_aoj(ar).unwrap();
+    }
+    fn aotr(&mut self, ar: &str) {
+        self.aotr = p13_tr_in_aoj(ar).unwrap();
+    }
+    fn amps(&mut self, ar: &str) {
+        self.amps = p13_am_po_de(ar).unwrap();
+    }
+    fn amtr(&mut self, ar: &str) {
+        self.amtr = p13_tr_in_amp(ar).unwrap();
+    }
+    fn muni(&mut self, ar: &str) {
+        self.muni = p13_mu_po_de(ar).unwrap();
+    }
+    fn mutr(&mut self, ar: &str) {
+        self.mutr = p13_tr_in_mun(ar).unwrap();
+    }
+    fn repl(&mut self, ar: &str) {
+        self.repl = p13_re_plan(ar).unwrap();
+    }
+    fn resb(&mut self, ar: &str) {
+        self.resb = p13_sb_in_re(ar).unwrap();
+    }
+    fn sola(&mut self, ar: &str) {
+        if let Ok(a) = p13_lv_solar(ar) {
+            self.sola = a;
+        }
+    }
+    fn sotr(&mut self, ar: &str) {
+        if let Ok(a) = p13_tr_in_sol(ar) {
+            self.sotr = a;
+        }
+    }
+    fn sblp(&mut self, ar: &str) {
+        self.sblp = p13_sb_rep_lp(ar).unwrap();
+    }
+    fn fdlp(&mut self, ar: &str) {
+        self.fdlp = p13_fd_rep_lp(ar).unwrap();
+    }
+    /*
+    fn carg(&mut self) {
+        self.carg = load_pvcamp();
+    }
+    */
+    pub fn sb2pv(&self, sb: &String) -> String {
+        if let Some(sf) = self.sbif.get(sb) {
+            return sf.prov.to_string();
+        }
+        "".to_string()
+    }
+    pub fn prep0(ar: &str) -> Self {
+        let mut eg = ProcEngine::default();
+        eg.subs(ar);
+        eg.ctrs(ar);
+        eg.cmts(ar);
+        eg.bils(ar);
+        eg.m2bs(ar);
+        eg.vols(ar);
+        eg.votr(ar);
+        eg.spps(ar);
+        eg.spsb(ar);
+        eg.vsps(ar);
+        eg.vssb(ar);
+        eg.zons(ar);
+        eg.zntr(ar);
+        eg.aojs(ar);
+        eg.aotr(ar);
+        eg.amps(ar);
+        eg.amtr(ar);
+        eg.muni(ar);
+        eg.mutr(ar);
+        eg.repl(ar);
+        eg.resb(ar);
+        eg.sola(ar);
+        eg.sotr(ar);
+        eg.sblp(ar);
+        eg.fdlp(ar);
+        eg
+    }
+    pub fn prep1() -> Self {
+        ProcEngine {
+            evpv: p13_ev_distr(&EV_PRV_ADJ_1),
+            sbif: ld_sub_info().clone(),
+            lp23: p03_load_lp("2023"),
+            lp24: p03_load_lp("2024"),
+            ..Default::default()
+        }
+    }
+    pub fn prep2(ar: &str) -> Self {
+        let mut eg = ProcEngine::default();
+        eg.subs(ar);
+        eg.ctrs(ar);
+        eg.cmts(ar);
+        eg.bils(ar);
+        eg.m2bs(ar);
+        eg.vols(ar);
+        eg.votr(ar);
+        eg.spps(ar);
+        eg.spsb(ar);
+        eg.vsps(ar);
+        eg.vssb(ar);
+        eg.zons(ar);
+        eg.zntr(ar);
+        eg.aojs(ar);
+        eg.aotr(ar);
+        eg.amps(ar);
+        eg.amtr(ar);
+        eg.muni(ar);
+        eg.mutr(ar);
+        eg.repl(ar);
+        eg.resb(ar);
+        eg.sola(ar);
+        eg.sotr(ar);
+        eg.sblp(ar);
+        eg
+    }
+    pub fn prep_c01_0() -> Self {
+        ProcEngine {
+            evpv: p13_ev_distr(&EV_PRV_ADJ_1),
+            sbif: ld_sub_info().clone(),
+            ..Default::default()
+        }
+    }
+    pub fn prep_c01_1(ar: &str) -> Self {
+        let mut eg = ProcEngine::default();
+        eg.subs(ar);
+        eg.ctrs(ar);
+        eg.cmts(ar);
+        eg.bils(ar);
+        eg.m2bs(ar);
+        eg.vols(ar);
+        eg.votr(ar);
+        eg.spps(ar);
+        eg.spsb(ar);
+        eg.vsps(ar);
+        eg.vssb(ar);
+        eg.zons(ar);
+        eg.zntr(ar);
+        eg.aojs(ar);
+        eg.aotr(ar);
+        eg.amps(ar);
+        eg.amtr(ar);
+        eg.muni(ar);
+        eg.mutr(ar);
+        eg.repl(ar);
+        eg.resb(ar);
+        eg.sola(ar);
+        eg.sotr(ar);
+        eg.sblp(ar);
+        eg
+    }
+    pub fn prep3(ar: &str) -> Self {
+        let mut eg = ProcEngine::default();
+        eg.subs(ar);
+        eg.vols(ar);
+        eg.spps(ar);
+        eg.vsps(ar);
+        eg.zons(ar);
+        eg.aojs(ar);
+        eg.amps(ar);
+        eg.muni(ar);
+        eg.repl(ar);
+        eg.sola(ar);
+        eg
+    }
+    pub fn prep5() -> Self {
+        ProcEngine {
+            evpv: ev_distr(&EV_PRV_ADJ_2),
+            sbif: ld_sub_info().clone(),
+            lp23: p03_load_lp("2023"),
+            lp24: p03_load_lp("2024"),
+            ..Default::default()
+        }
+    }
+    pub fn prep6(ar: &str) -> Self {
+        let mut eg = ProcEngine::default();
+        eg.subs(ar);
+        eg.aojs(ar);
+        eg
+    }
+    pub fn prep7(ar: &str) -> Self {
+        let mut eg = ProcEngine::default();
+        eg.subs(ar);
+        eg.ctrs(ar);
+        eg.cmts(ar);
+        eg.bils(ar);
+        eg.m2bs(ar);
+        eg
+    }
+}
+
+use sglib04::geo3::GisAoj;
+
+impl BranchGIS {
+    pub fn from(g: &GisAoj) -> BranchGIS {
+        BranchGIS {
+            ar: g.ar.clone(),
+            level: g.level,
+            center_x: g.center_x,
+            center_y: g.center_y,
+            code: g.code.clone(),
+            sht_name: g.sht_name.clone(),
+            shp_len: g.shp_len,
+            office: g.office.clone(),
+            parent1: g.parent1.clone(),
+            parent2: g.parent2.clone(),
+            pea: g.pea.clone(),
+            ar_cd: g.ar_cd.clone(),
+            shp_area: g.shp_area,
+            prv_cd: g.prv_cd.clone(),
+            aoj_sz: g.aoj_sz.clone(),
+            reg: g.reg.clone(),
+            name: g.name.clone(),
+            gons: g.gons.clone(),
+            ..Default::default()
+        }
+    }
+}
