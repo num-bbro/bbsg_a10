@@ -1,6 +1,7 @@
 use strum_macros::EnumIter;
+use strum_macros::EnumString;
 
-#[derive(Debug, Clone, EnumIter)]
+#[derive(Debug, Clone, EnumIter, EnumString)]
 #[allow(non_camel_case_types)]
 pub enum ASM {
     NONE,
@@ -34,7 +35,6 @@ pub enum ASM {
     DR_DEV_PLAN_RATE,
     MET_1PH_COST,
     MET_3PH_COST,
-
     BOX_LINE_NEED_RATE,
     BOX_LINE_UNIT_COST,
 
@@ -109,6 +109,7 @@ pub enum ASM {
     BC_NO_DAY_IN_YEAR,
     BC_BASE_YEAR,
     BC_PROJ_YLEN,
+    BC_SVG_PERMW_COST,
     //BC_ON_PEAK_BEGIN,
     BC_ON_PEAK_END,
     BC_ADMIN_COST,
@@ -128,6 +129,9 @@ pub enum ASM {
     TRX_OP_COST,
     ESS_OP_COST,
 
+    PLATFORM_COST,
+    PLATFORM_OP_COST,
+
     PLATFORM_COST_5M,
     PLATFORM_COST_10K,
     PLATFORM_COST_1M,
@@ -136,7 +140,7 @@ pub enum ASM {
     PLATFORM_OP_COST_10K,
     PLATFORM_OP_COST_1M,
 
-    COMM_COST,
+    COMM_OP_COST,
     ASSET_WORTH_RATIO,
 
     //========== STG3
@@ -185,6 +189,7 @@ pub enum ASM {
 
     OP_INC_RATE,
     OUTDIR,
+    INPUTDIR,
     OUTFILE,
     TPA_FORECAST,
     TPA_DAY_HOURS,
@@ -193,4 +198,53 @@ pub enum ASM {
     TPA_YEAR_DAYS,
     METER_NO_MULTIPLY,
     BESS_EVCAP_MULTIPLY,
+    XLSX_OUT,
+    BESS_EVPOW_MWH_MULT,
+    FIELD_LIST,
+    PROVINCE_LIST,
+    DATA_FIELDS,
+    SHEET_FIELDS,
+    //===== DEVICE REQUEST
+    SVG_DEV_NO_REQ,
+    TPO_DEV_NO_REQ,
+    ECU_DEV_NO_REQ,
+    //==================
+    SOLAR_TO_BESS_FACTOR,
+    SUB_BESS_MAX_MWH,
+    SVG_PILOT_SUBST,
+    MAX_ROW_NO,
+    //==================
+    DAY_VAL_PNTS,
+    ONE_DAY_SEC,
+    ONE_TIK_SEC,
+    //==================
+    PLATFORM_IMP_COST,
+    ESS_IMP_COST,
+    STD_FONT,
+    DOCX_IMG_FAC,
+    DOC_TB_INDENT,
+    TABSHADE,
+    CELL_MARGIN,
+    DOCX_PNTS,
+    LOAD_PROF_MIN_DAYS,
+    LOAD_PROF_MAX_DAYS,
+    LOAD_PROF_MIN_HOUR,
+    FK1_RT_SOLA,
+    BIGGER_RATIO,
+    BASE_OVER_RATE,
+    DFT_K_MAX,
+    BRN_MIN_FIR_CST_RATIO,
+    BRN_MIN_FIR_CST_RATIO2,
+    ECON_CALC_EXCEL_FILE,
+    SUB_LIST_ADD_BESS,
+    EV_REG_AT_2023,
+    EV_BAT_CAP_MWH,
+    EV_TIME_FULCHG_YR,
+    ET_BAT_CAP_MWH,
+    ET_TIME_FULCHG_YR,
+    EB_TIME_FULCHG_YR,
+    EB_BAT_CAP_MWH,
+    PRJ_START_YEAR,
+    PRJ_END_YEAR,
+    PRJ_IMPL_YEAR,
 }

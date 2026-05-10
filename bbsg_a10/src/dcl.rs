@@ -4,6 +4,7 @@ use phf_macros::phf_map;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use strum_macros::EnumIter;
+use strum_macros::EnumString;
 
 use std::sync::Mutex;
 
@@ -80,6 +81,20 @@ pub struct PeaSub {
     pub spps: Vec<usize>,
     pub repls: Vec<usize>,
     pub aojv: Vec<AojObj>,
+}
+
+#[derive(Encode, Decode, Debug, Clone, Default)]
+pub struct PeaSubEx1 {
+    pub sbid: String,
+    pub name: String,
+    pub enam: String,
+    pub area: String,
+    pub arid: String,
+    pub sbtp: String,
+    pub n1d_s: u64,
+    pub n1d_f: u64,
+    pub mvxn: i32,
+    pub lp_rep_24: SubLoadProfRepr,
 }
 
 #[derive(Encode, Decode, Debug, Clone, Default)]
@@ -205,7 +220,7 @@ pub enum SumType {
     Min,
 }
 
-#[derive(Encode, Decode, Debug, Clone, Default, EnumIter)]
+#[derive(Encode, Decode, Debug, Clone, Default, EnumIter, EnumString)]
 //#[derive( Encode, Decode, Debug, Clone, Default, Deserialize, Serialize, PartialEq, EnumIter,)]
 //#[rkyv(compare(PartialEq), derive(Debug))]
 pub enum VarType {
@@ -399,6 +414,15 @@ pub enum VarType {
 
     NoPeaTrSimA,
     NoPeaTrPlcA,
+
+    EcoReturn,
+    EcoCapex,
+    EcoOpex,
+    EcoInterest,
+    EcoCost,
+    EcoNpv,
+    EcoIRR,
+    EcoBreakYear,
 }
 
 #[derive(Encode, Decode, Debug, Clone, Default)]
@@ -759,11 +783,11 @@ pub const EV_PRV_ADJ_2: [(&str, f64, f64); 26] = [
     ("สมุทรปราการ", 0.0, 15.0),
 ];
 
-pub const FIR_FLDS: [VarType; 29] = [
+pub const FIR_FLDS: [VarType; 26] = [
     VarType::FirEvChgThb,
     VarType::FirEtChgThb,
     VarType::FirEbChgThb,
-    VarType::FirMvReThb,
+    //VarType::FirMvReThb,
     VarType::FirUnbSave,
     VarType::FirTrSatSave,
     VarType::FirTrPhsSatSave,
@@ -772,7 +796,7 @@ pub const FIR_FLDS: [VarType; 29] = [
     VarType::FirCashFlow,
     VarType::FirDRSave,
     VarType::FirBatSubSave,
-    VarType::FirBatSvgSave,
+    //VarType::FirBatSvgSave,
     VarType::FirBatEnerSave,
     VarType::FirBatPriceDiff,
     VarType::FirMetBoxSave,
@@ -788,7 +812,7 @@ pub const FIR_FLDS: [VarType; 29] = [
     VarType::FirComplainSave,
     VarType::FirAssetValue,
     VarType::FirDataEntrySave,
-    VarType::FirTpaThb,
+    //VarType::FirTpaThb,
 ];
 
 pub const EIR_FLDS: [VarType; 8] = [

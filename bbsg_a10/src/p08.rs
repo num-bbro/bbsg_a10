@@ -9,16 +9,31 @@ use bincode::Decode;
 use bincode::Encode;
 use strum_macros::EnumIter;
 
+use crate::asm::ASM::*;
+use crate::utl6::ArchiInfo;
 use iterstats::Iterstats;
 use num::complex::Complex;
 use regex::Regex;
 use std::f64::consts::PI;
+/*
 const FK1_RT_SOLA: f32 = 0.15;
 const BIGGER_RATIO: f32 = 1.5;
 const BASE_OVER_RATE: f32 = 0.5;
+const DFT_K_MAX: usize = 4;
+*/
 
-pub fn p08_draw_01(yr: &str, _sb: &str) -> Result<(), Box<dyn Error>> {
-    let fnm = format!("/mnt/e/CHMBACK/pea-data/data2/p03_lp_repr_{yr}.bin");
+//pub fn p08_draw_01(yr: &str, _sb: &str) -> Result<(), Box<dyn Error>> {
+pub fn p08_draw_01(yr: &str, arif: &ArchiInfo) -> Result<(), Box<dyn Error>> {
+    let fk1_rt_sola = arif.ass.v(FK1_RT_SOLA);
+    let bigger_ratio = arif.ass.v(BIGGER_RATIO);
+    let base_over_rate = arif.ass.v(BASE_OVER_RATE);
+    let dft_k_max = arif.ass.u(DFT_K_MAX);
+
+    let inp = arif.ass.t(INPUTDIR);
+
+    let fnm = format!("{inp}/data2/p3_lp_repr_{yr}.bin");
+    //let fnm = format!("/mnt/e/CHMBACK/pea-data/data2/p03_lp_repr_{yr}.bin");
+
     println!("{yr} {fnm}");
     let bytes = std::fs::read(fnm).unwrap();
     let (sblpr, _): (HashMap<String, SubLoadProfRepr>, usize) =
@@ -60,8 +75,8 @@ pub fn p08_draw_01(yr: &str, _sb: &str) -> Result<(), Box<dyn Error>> {
                 #[allow(non_camel_case_types)]
                 let nn = nc.len();
                 let (mut en, mut en1, mut en2) = (0f32, 0f32, 0f32);
-                const DFT_K_MAX: usize = 4;
-                let mut ffk = [Complex::new(0.0, 0.0); DFT_K_MAX];
+                //let mut ffk = [Complex::new(0.0, 0.0); DFT_K_MAX];
+                let mut ffk = vec![Complex::new(0.0, 0.0); dft_k_max];
                 for (k, ffk) in ffk.iter_mut().enumerate() {
                     print!(" Xk{k}:");
                     let mut xxk = Complex::new(0f64, 0f64);
@@ -144,25 +159,25 @@ pub fn p08_draw_01(yr: &str, _sb: &str) -> Result<(), Box<dyn Error>> {
                 }
                 let ang = po.1 / PI * 180f64;
                 //let rt1 = ffk[1].re / ffk[0].re;
-                if en2 > 0.0 && fk1 >= FK1_RT_SOLA.into() && ang > -70.0 && ang < 30.0 {
+                if en2 > 0.0 && fk1 >= fk1_rt_sola.into() && ang > -70.0 && ang < 30.0 {
                     //if en2 > 0.0 && ffk[1].re > 0.1 && ang > -70.0 && ang < 30.0 {
                     //if rt1 > 0.2 && en2 > 0.0 && ffk[1].re > 0.1 && ang > -70.0 && ang < 30.0 {
                     gp = "G2";
                 }
-                if gp == "G2" && enb > 0.0 && bor > BASE_OVER_RATE {
+                if gp == "G2" && enb > 0.0 && bor > base_over_rate {
                     gp = "G3";
                 }
                 let pt0 = pt1 > 0.0 && pt2 > 0.0 && pt3 > 0.0 && pt4 > 0.0;
-                if gp == "GZ" && pt0 && (pt1 + pt2) / (pt3 + pt4) > BIGGER_RATIO {
+                if gp == "GZ" && pt0 && (pt1 + pt2) / (pt3 + pt4) > bigger_ratio {
                     gp = "G5";
                 }
-                if gp == "GZ" && pt0 && (pt3 + pt4) / (pt1 + pt2) > BIGGER_RATIO {
+                if gp == "GZ" && pt0 && (pt3 + pt4) / (pt1 + pt2) > bigger_ratio {
                     gp = "G6";
                 }
-                if gp == "GZ" && pt0 && (pt2 + pt3) / (pt1 + pt4) > BIGGER_RATIO {
+                if gp == "GZ" && pt0 && (pt2 + pt3) / (pt1 + pt4) > bigger_ratio {
                     gp = "G7";
                 }
-                if gp == "GZ" && pt0 && (pt1 + pt4) / (pt2 + pt3) > BIGGER_RATIO {
+                if gp == "GZ" && pt0 && (pt1 + pt4) / (pt2 + pt3) > bigger_ratio {
                     gp = "G8";
                 }
                 if gp == "GZ" && pt1 < 0.0 && pt2 > 0.0 && pt3 > 0.0 && pt4 < 0.0 {
@@ -171,10 +186,10 @@ pub fn p08_draw_01(yr: &str, _sb: &str) -> Result<(), Box<dyn Error>> {
                 if gp == "GZ" && pt1 < 0.0 && pt2 < 0.0 && pt3 < 0.0 && pt4 > 0.0 {
                     gp = "GA";
                 }
-                if gp == "G1" && fk1 >= FK1_RT_SOLA.into() && ang < -150.0 && ang > -210.0 {
+                if gp == "G1" && fk1 >= fk1_rt_sola.into() && ang < -150.0 && ang > -210.0 {
                     gp = "GB";
                 }
-                if gp == "GZ" && enb > 0.0 && bor > BASE_OVER_RATE {
+                if gp == "GZ" && enb > 0.0 && bor > base_over_rate {
                     gp = "G4";
                 }
                 let mut rc = [0f64; 96];
@@ -290,7 +305,6 @@ pub fn p08_draw_01(yr: &str, _sb: &str) -> Result<(), Box<dyn Error>> {
             }
             //print!(" n:{}", nc.len());
         };
-        /*
         if let Some(lpr) = &slp.neg_rep.val {
             use std::fmt::Write;
             let mut ss = String::new();
@@ -489,7 +503,6 @@ pub fn p08_draw_01(yr: &str, _sb: &str) -> Result<(), Box<dyn Error>> {
             }
             //print!(" n:{}", nc.len());
         };
-        */
     }
     Ok(())
 }
@@ -621,9 +634,20 @@ pub struct ProfInfo {
     pub sol_en: Option<f32>,
     pub solar: Option<Vec<f32>>,
 }
+use crate::utl6::Assumption;
 
-pub fn p08_class_val(lpv: &[Option<f32>; DAY_VAL_PNTS]) -> Result<ProfInfo, Box<dyn Error>> {
-    let mut lpr = *lpv;
+pub fn p08_class_val(
+    lpv: &[Option<f32>; DAY_VAL_PNTS],
+    ass: &Assumption,
+) -> Result<ProfInfo, Box<dyn Error>> {
+    //pub fn p08_class_val(lpv: &[Option<f32>], arif: &ArchiInfo) -> Result<ProfInfo, Box<dyn Error>> {
+    let fk1_rt_sola = ass.v(FK1_RT_SOLA);
+    let bigger_ratio = ass.v(BIGGER_RATIO);
+    let base_over_rate = ass.v(BASE_OVER_RATE);
+    //let dft_k_max = arif.ass.u(DFT_K_MAX);
+
+    //let mut lpr = *lpv;
+    let mut lpr = lpv.clone();
     for i in 0..lpr.len() {
         if lpr[i].is_none() {
             if i == 0 {
@@ -723,23 +747,23 @@ pub fn p08_class_val(lpv: &[Option<f32>; DAY_VAL_PNTS]) -> Result<ProfInfo, Box<
             lptp = ProfType::Injection;
         }
         let ang = po.1 / PI * 180f64;
-        if en2 > 0.0 && fk1 >= FK1_RT_SOLA.into() && ang > -70.0 && ang < 30.0 {
+        if en2 > 0.0 && fk1 >= fk1_rt_sola.into() && ang > -70.0 && ang < 30.0 {
             lptp = ProfType::SolarPower;
         }
-        if lptp == ProfType::SolarPower && enb > 0.0 && bor > BASE_OVER_RATE {
+        if lptp == ProfType::SolarPower && enb > 0.0 && bor > base_over_rate {
             lptp = ProfType::SolarNight;
         }
         let pt0 = pt1 > 0.0 && pt2 > 0.0 && pt3 > 0.0 && pt4 > 0.0;
-        if lptp == ProfType::Unknown && pt0 && (pt1 + pt2) / (pt3 + pt4) > BIGGER_RATIO {
+        if lptp == ProfType::Unknown && pt0 && (pt1 + pt2) / (pt3 + pt4) > bigger_ratio {
             lptp = ProfType::FirstHalf;
         }
-        if lptp == ProfType::Unknown && pt0 && (pt3 + pt4) / (pt1 + pt2) > BIGGER_RATIO {
+        if lptp == ProfType::Unknown && pt0 && (pt3 + pt4) / (pt1 + pt2) > bigger_ratio {
             lptp = ProfType::LastHalf;
         }
-        if lptp == ProfType::Unknown && pt0 && (pt2 + pt3) / (pt1 + pt4) > BIGGER_RATIO {
+        if lptp == ProfType::Unknown && pt0 && (pt2 + pt3) / (pt1 + pt4) > bigger_ratio {
             lptp = ProfType::MiddHalf;
         }
-        if lptp == ProfType::Unknown && pt0 && (pt1 + pt4) / (pt2 + pt3) > BIGGER_RATIO {
+        if lptp == ProfType::Unknown && pt0 && (pt1 + pt4) / (pt2 + pt3) > bigger_ratio {
             lptp = ProfType::BothEndHalf;
         }
         if lptp == ProfType::Unknown && pt1 < 0.0 && pt2 > 0.0 && pt3 > 0.0 && pt4 < 0.0 {
@@ -748,14 +772,14 @@ pub fn p08_class_val(lpv: &[Option<f32>; DAY_VAL_PNTS]) -> Result<ProfInfo, Box<
         if lptp == ProfType::Unknown && pt1 < 0.0 && pt2 < 0.0 && pt3 < 0.0 && pt4 > 0.0 {
             lptp = ProfType::NegNegPosPos;
         }
-        if lptp == ProfType::Injection && fk1 >= FK1_RT_SOLA.into() && ang < -150.0 && ang > -210.0
+        if lptp == ProfType::Injection && fk1 >= fk1_rt_sola.into() && ang < -150.0 && ang > -210.0
         {
             lptp = ProfType::InjectSolar;
         }
         if lptp == ProfType::Unknown
             && enb > 0.0
-            && bor > BASE_OVER_RATE
-            && (pt3 + pt4) / (pt1 + pt2) > BIGGER_RATIO
+            && bor > base_over_rate
+            && (pt3 + pt4) / (pt1 + pt2) > bigger_ratio
         {
             lptp = ProfType::Night;
         }
@@ -827,7 +851,8 @@ pub fn p08_class_val(lpv: &[Option<f32>; DAY_VAL_PNTS]) -> Result<ProfInfo, Box<
     Err("Error".into())
 }
 
-pub fn p08_calc_lp1(yr: &str) -> Result<(), Box<dyn Error>> {
+pub fn p08_calc_lp1(yr: &str, arif: &ArchiInfo) -> Result<(), Box<dyn Error>> {
+    let ass = arif.assumption();
     let fnm = format!("/mnt/e/CHMBACK/pea-data/data2/p02_sub_lp_{yr}.bin");
     let bytes = std::fs::read(fnm).unwrap();
     let (subh, _): (HashMap<String, SubLoadProf>, usize) =
@@ -846,7 +871,7 @@ pub fn p08_calc_lp1(yr: &str) -> Result<(), Box<dyn Error>> {
             let mut lpv678 = Vec::<ProfInfo>::new();
             for (di, dlp) in ldpf.days.iter().enumerate() {
                 if let Some(dlp) = dlp {
-                    if let Ok(lpf) = p08_class_val(&dlp.val) {
+                    if let Ok(lpf) = p08_class_val(&dlp.val, &ass) {
                         if lpf.lp_type == ProfType::SolarPower
                             || lpf.lp_type == ProfType::SolarNight
                         {
@@ -940,12 +965,13 @@ pub fn p08_calc_lp1(yr: &str) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn p08_calc_lp2(yr: &str, sb: &str) -> Result<(), Box<dyn Error>> {
+pub fn p08_calc_lp2(yr: &str, sb: &str, arif: &ArchiInfo) -> Result<(), Box<dyn Error>> {
     let fnm = format!("/mnt/e/CHMBACK/pea-data/data2/p02_sub_lp_{yr}.bin");
     let bytes = std::fs::read(fnm).unwrap();
     let (subh, _): (HashMap<String, SubLoadProf>, usize) =
         bincode::decode_from_slice(&bytes[..], bincode::config::standard()).unwrap();
     //let mut mon_fdldp = HashMap::<usize,F
+    let ass = arif.assumption();
     let (mut n1w, mut n2w) = (0, 0);
     let (mut n1e, mut n2e) = (0.0, 0.0);
     let s = sb.to_string();
@@ -959,7 +985,7 @@ pub fn p08_calc_lp2(yr: &str, sb: &str) -> Result<(), Box<dyn Error>> {
             let mut lpv678 = Vec::<ProfInfo>::new();
             for (di, dlp) in ldpf.days.iter().enumerate() {
                 if let Some(dlp) = dlp {
-                    if let Ok(lpf) = p08_class_val(&dlp.val) {
+                    if let Ok(lpf) = p08_class_val(&dlp.val, &ass) {
                         if lpf.lp_type == ProfType::SolarPower
                             || lpf.lp_type == ProfType::SolarNight
                         {
@@ -1053,7 +1079,8 @@ pub fn p08_calc_lp2(yr: &str, sb: &str) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn p08_calc_lp3(yr: &str) -> Result<(), Box<dyn Error>> {
+pub fn p08_calc_lp3(yr: &str, arif: &ArchiInfo) -> Result<(), Box<dyn Error>> {
+    let ass = arif.assumption();
     let fnm = format!("/mnt/e/CHMBACK/pea-data/data2/p02_sub_lp_{yr}.bin");
     let bytes = std::fs::read(fnm).unwrap();
     let (subh, _): (HashMap<String, SubLoadProf>, usize) =
@@ -1073,7 +1100,7 @@ pub fn p08_calc_lp3(yr: &str) -> Result<(), Box<dyn Error>> {
             let mut lpv678 = Vec::<ProfInfo>::new();
             for (di, dlp) in ldpf.days.iter().enumerate() {
                 if let Some(dlp) = dlp {
-                    if let Ok(lpf) = p08_class_val(&dlp.val) {
+                    if let Ok(lpf) = p08_class_val(&dlp.val, &ass) {
                         if lpf.lp_type == ProfType::SolarPower
                             || lpf.lp_type == ProfType::SolarNight
                         {

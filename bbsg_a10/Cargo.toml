@@ -45,6 +45,9 @@ yeslogic-fontconfig-sys = { version = "6.0.0", features = ["dlopen"] }
 font-kit = { version = "0.14.3", features = ["source-fontconfig-dlopen", "yeslogic-fontconfig-sys"] }
 rust_xlsxwriter = "0.92.3"
 rkyv = "0.8.14"
+shapefile = { version = "0.8.0", features = ["encoding_rs", "serde"] }
+dbase = { version = "0.7.0", features = ["encoding_rs", "yore"] }
+fast-math = "0.1.1"
 
 [features]
 dcl = []

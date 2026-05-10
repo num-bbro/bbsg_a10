@@ -106,8 +106,50 @@ pub fn c01_chk_01_01(dnm: &str, g0: &ProcEngine) -> Result<Pea, Box<dyn Error>> 
     Ok(pea)
 }
 
+use crate::asm::ASM::OUTDIR;
+use crate::utl6::Assumption;
 use std::sync::Arc;
 use std::sync::Mutex;
+
+pub fn make_sub_ex1(ass: &Assumption) -> Result<(), Box<dyn Error>> {
+    let dnm = ass.t(OUTDIR);
+    let fnm = format!("{dnm}/000_pea.bin");
+    println!("fnm:{fnm}");
+    let buf = std::fs::read(fnm).unwrap();
+    let (pea, _): (Pea, usize) =
+        bincode::decode_from_slice(&buf[..], bincode::config::standard()).unwrap();
+    let mut sbex1 = HashMap::<String, PeaSubEx1>::new();
+    for (_, a) in pea.aream.iter() {
+        for (_, p) in a.provm.iter() {
+            for (s, _) in p.subm.iter() {
+                println!("sub: {s}");
+                let Ok(buf) = std::fs::read(format!("{dnm}/{s}.bin")) else {
+                    continue;
+                };
+                let (sb, _): (PeaSub, usize) =
+                    bincode::decode_from_slice(&buf[..], bincode::config::standard()).unwrap();
+                let sbex = PeaSubEx1 {
+                    sbid: sb.sbid.to_string(),
+                    name: sb.name.to_string(),
+                    enam: sb.enam.to_string(),
+                    area: sb.area.to_string(),
+                    arid: sb.arid.to_string(),
+                    sbtp: sb.sbtp.to_string(),
+                    n1d_s: sb.n1d_s,
+                    n1d_f: sb.n1d_f,
+                    mvxn: sb.mvxn,
+                    lp_rep_24: sb.lp_rep_24.clone(),
+                };
+                sbex1.insert(sbex.sbid.clone(), sbex);
+            }
+        }
+    }
+    let bin: Vec<u8> = bincode::encode_to_vec(&sbex1, bincode::config::standard()).unwrap();
+    std::fs::write(format!("{dnm}/pea_sub_ex1.bin"), bin).unwrap();
+    println!("       ===== write to pea_sub_ex1.bin");
+
+    Ok(())
+}
 
 pub fn c01_chk_01_02(pea: &Pea, dnm: &str, g00: &ProcEngine) -> Result<(), Box<dyn Error>> {
     let smrt = Regex::new(r"[12].*").unwrap();
@@ -365,12 +407,16 @@ pub fn c01_chk_01_02(pea: &Pea, dnm: &str, g00: &ProcEngine) -> Result<(), Box<d
 
                         let bin: Vec<u8> =
                             bincode::encode_to_vec(&sb, bincode::config::standard()).unwrap();
-                        std::fs::write(format!("{dnm}/{}.bin", sb.sbid), bin).unwrap();
+                        if let Err(e) = std::fs::write(format!("{dnm}/{}.bin", sb.sbid), bin) {
+                            println!("ERROR {dnm}/{}.bin {e:?}", sb.sbid);
+                        }
+                        //std::fs::write(format!("{dnm}/{}.bin", sb.sbid), bin).unwrap();
 
                         //////////////////////////////////////////////
                         //////////////////////////////////////////////
                         //////////////////////////////////////////////
                         println!("       ===== write to {}.bin", sb.sbid);
+                        //================= CHECK
                     } // end sub loop
                 } // end province loop
             });

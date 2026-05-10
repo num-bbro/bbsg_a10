@@ -37,7 +37,8 @@ use sglib04::ld1::EV_PRV_ADJ_1;
 use strum::IntoEnumIterator;
 use crate::utl4::Archi;
 use crate::asm::ASM::*;
-use crate::stx2::ass_calc;
+use crate::utl6::Assumption;
+//use crate::stx2::ass_calc;
 
 //pub const ECON_GRW_RATE: f32 = 0.00f32;
 
@@ -59,6 +60,7 @@ impl PeaAssVar {
                 VarType::MaxNegPowFeeder => SumType::Max,
                 VarType::MaxPosDiffFeeder => SumType::Max,
                 VarType::MaxNegDiffFeeder => SumType::Max,
+                //VarType::SubSolarPeekMw => SumType::Max,
                 VarType::UnbalPowRate => SumType::Max,
                 _ => SumType::Sum,
             };
@@ -141,6 +143,14 @@ impl PeaAssVar {
         }
     }
     pub fn sum_yr(&mut self, vt: VarType, arc: &Archi) {
+        self.v[vt.tousz()].v = self.vy[vt.tousz()].iter().sum();
+        self.v[vt.tousz()].npv = self.vy[vt.tousz()]
+            .iter()
+            .enumerate()
+            .map(|(y, v)| v / Pow::pow(1.0 + arc.v(ECON_GRW_RATE), y as f32))
+            .sum::<f32>();
+    }
+    pub fn yr_sum(&mut self, vt: VarType, arc: &Assumption) {
         self.v[vt.tousz()].v = self.vy[vt.tousz()].iter().sum();
         self.v[vt.tousz()].npv = self.vy[vt.tousz()]
             .iter()
@@ -461,91 +471,91 @@ impl ProcEngine {
 }
 
 impl ProcEngine {
-    fn subs(&mut self, ar: &str) {
+    pub fn subs(&mut self, ar: &str) {
         let fnm = format!("/mnt/e/CHMBACK/pea-data/data2/p11_{ar}_sb_fd_tr.bin");
         let bytes = std::fs::read(fnm).unwrap();
         let (subs, _): (Vec<SubFeedTrans>, usize) =
             bincode::decode_from_slice(&bytes[..], bincode::config::standard()).unwrap();
         self.subs = subs;
     }
-    fn ctrs(&mut self, ar: &str) {
+    pub fn ctrs(&mut self, ar: &str) {
         self.ctrs = p13_cnl_trs(ar).unwrap();
     }
-    fn cmts(&mut self, ar: &str) {
+    pub fn cmts(&mut self, ar: &str) {
         self.cmts = p13_cnl_mt(ar).unwrap();
     }
-    fn bils(&mut self, ar: &str) {
+    pub fn bils(&mut self, ar: &str) {
         self.bils = p13_mt_bil(ar).unwrap();
     }
-    fn m2bs(&mut self, ar: &str) {
+    pub fn m2bs(&mut self, ar: &str) {
         self.m2bs = p13_mt2bil(ar).unwrap();
     }
-    fn vols(&mut self, ar: &str) {
+    pub fn vols(&mut self, ar: &str) {
         self.vols = p13_volta(ar).unwrap();
     }
-    fn votr(&mut self, ar: &str) {
+    pub fn votr(&mut self, ar: &str) {
         self.votr = p13_tr_in_vol(ar).unwrap();
     }
-    fn spps(&mut self, ar: &str) {
+    pub fn spps(&mut self, ar: &str) {
         self.spps = p13_spp(ar).unwrap();
     }
-    fn spsb(&mut self, ar: &str) {
+    pub fn spsb(&mut self, ar: &str) {
         self.spsb = p13_sb_in_spp(ar).unwrap();
     }
-    fn vsps(&mut self, ar: &str) {
+    pub fn vsps(&mut self, ar: &str) {
         self.vsps = p13_vspp(ar).unwrap();
     }
-    fn vssb(&mut self, ar: &str) {
+    pub fn vssb(&mut self, ar: &str) {
         self.vssb = p13_sb_in_vspp(ar).unwrap();
     }
-    fn zons(&mut self, ar: &str) {
+    pub fn zons(&mut self, ar: &str) {
         self.zons = p13_zone(ar).unwrap();
     }
-    fn zntr(&mut self, ar: &str) {
+    pub fn zntr(&mut self, ar: &str) {
         self.zntr = p13_tr_in_zn(ar).unwrap();
     }
-    fn aojs(&mut self, ar: &str) {
+    pub fn aojs(&mut self, ar: &str) {
         self.aojs = p13_aoj(ar).unwrap();
     }
-    fn aotr(&mut self, ar: &str) {
+    pub fn aotr(&mut self, ar: &str) {
         self.aotr = p13_tr_in_aoj(ar).unwrap();
     }
-    fn amps(&mut self, ar: &str) {
+    pub fn amps(&mut self, ar: &str) {
         self.amps = p13_am_po_de(ar).unwrap();
     }
-    fn amtr(&mut self, ar: &str) {
+    pub fn amtr(&mut self, ar: &str) {
         self.amtr = p13_tr_in_amp(ar).unwrap();
     }
-    fn muni(&mut self, ar: &str) {
+    pub fn muni(&mut self, ar: &str) {
         self.muni = p13_mu_po_de(ar).unwrap();
     }
-    fn mutr(&mut self, ar: &str) {
+    pub fn mutr(&mut self, ar: &str) {
         self.mutr = p13_tr_in_mun(ar).unwrap();
     }
-    fn repl(&mut self, ar: &str) {
+    pub fn repl(&mut self, ar: &str) {
         self.repl = p13_re_plan(ar).unwrap();
     }
-    fn resb(&mut self, ar: &str) {
+    pub fn resb(&mut self, ar: &str) {
         self.resb = p13_sb_in_re(ar).unwrap();
     }
-    fn sola(&mut self, ar: &str) {
+    pub fn sola(&mut self, ar: &str) {
         if let Ok(a) = p13_lv_solar(ar) {
             self.sola = a;
         }
     }
-    fn sotr(&mut self, ar: &str) {
+    pub fn sotr(&mut self, ar: &str) {
         if let Ok(a) = p13_tr_in_sol(ar) {
             self.sotr = a;
         }
     }
-    fn sblp(&mut self, ar: &str) {
+    pub fn sblp(&mut self, ar: &str) {
         self.sblp = p13_sb_rep_lp(ar).unwrap();
     }
-    fn fdlp(&mut self, ar: &str) {
+    pub fn fdlp(&mut self, ar: &str) {
         self.fdlp = p13_fd_rep_lp(ar).unwrap();
     }
     /*
-    fn carg(&mut self) {
+    pub fn carg(&mut self) {
         self.carg = load_pvcamp();
     }
     */

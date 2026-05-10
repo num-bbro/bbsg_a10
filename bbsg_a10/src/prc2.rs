@@ -83,13 +83,13 @@ pub const FEED_LEVEL_FLDS: [usize; 13] = [
 use crate::utl4::NumValEnum;
 use serde_json::Value;
 
-pub fn load(coreno: usize, vwid: String) -> Result<(), Box<dyn Error>> {
+pub fn load(_coreno: usize, _vwid: String) -> Result<(), Box<dyn Error>> {
     let dnm = crate::dcl::get_dirnm();
     let fnm = format!("{dnm}/all-rw4.bin");
     let Ok(buf) = std::fs::read(&fnm) else {
         return Err(format!("NO {fnm} file:").into());
     };
-    let Ok((mut assv0, _)): Result<(Vec<PeaAssVar>, usize), _> =
+    let Ok((assv0, _)): Result<(Vec<PeaAssVar>, usize), _> =
         bincode::decode_from_slice(&buf[..], bincode::config::standard())
     else {
         return Err("Failed to decode rw3:".into());
@@ -702,7 +702,7 @@ pub fn stage_02_b(coreno: usize, ac: &Archi, assrw1: Vec<PeaAssVar>) -> Result<(
 
     let tpo_no = 20_000;
     let ecu_no = 10_000;
-    let svg_no = 300;
+    let _svg_no = 300;
 
     //////////////////////////////////////////////
     // EV Weight
@@ -737,10 +737,10 @@ pub fn stage_02_b(coreno: usize, ac: &Archi, assrw1: Vec<PeaAssVar>) -> Result<(
         we_tpa.v[vt.tousz()].v = vv;
     }
 
-    let tpa_day_hours = ac.v(TPA_DAY_HOURS);
-    let tpa_price_thb = ac.v(TPA_PRICE_THB);
-    let tpa_ben_claim = ac.v(TPA_BEN_CLAIM);
-    let tpa_year_days = ac.v(TPA_YEAR_DAYS);
+    let _tpa_day_hours = ac.v(TPA_DAY_HOURS);
+    let _tpa_price_thb = ac.v(TPA_PRICE_THB);
+    let _tpa_ben_claim = ac.v(TPA_BEN_CLAIM);
+    let _tpa_year_days = ac.v(TPA_YEAR_DAYS);
     let tpafcs = ac.ve(TPA_FORECAST)?;
     let NumValEnum::Json(tpa_json) = tpafcs else {
         return Err("No TPA forecast data".into());
@@ -959,7 +959,7 @@ pub fn stage_02_b(coreno: usize, ac: &Archi, assrw1: Vec<PeaAssVar>) -> Result<(
         we_uc3.v[vt.tousz()].v = vv;
     }
     let evsc = ev_scurv();
-    let resc = re_scurv();
+    let _resc = re_scurv();
     let etsc = et_scurv();
     let ebsc = eb_scurv();
     //println!("evsc: {} resc: {}", evsc.len(), resc.len());

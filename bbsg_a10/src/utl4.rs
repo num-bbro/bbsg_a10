@@ -59,6 +59,7 @@ pub struct AssumObject {
     pub elmid: String,
     pub tagid: String,
 }
+
 #[derive(Debug, Clone, Default)]
 pub struct AssumValue {
     pub sid: String,
@@ -559,6 +560,7 @@ pub fn make_assum_val(
                         ass_val.push(asva);
                     }
                     "AssumJson" => {
+                        //let name = doc.replace("&quot;", "\"");
                         let mut name = name.replace("&quot;", "\"");
                         if name == "value" {
                             name = doc;

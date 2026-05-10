@@ -2439,7 +2439,7 @@ fn archi_ana1() -> Result<(ArchElem, ArchElem), Box<dyn Error>> {
                     //println!("========= Decl : {:?}", _de);
                 }
                 e => {
-                    println!("========= ERROR 2 : {:?}", e);
+                    println!("========= ERROR 4 : {:?}", e);
                 }
             }
             xbuf.clear();
