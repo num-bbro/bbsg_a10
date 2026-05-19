@@ -492,7 +492,7 @@ pub fn stage_02_1(_coreno: usize, arif: &ArchiInfo) -> Result<Vec<PeaAssVar>, Bo
                                         allsel += met.kwh15;
                                     } else if let MeterAccType::Large = met.met_type {
                                         vt10 += met.kwh15;
-                                        //print!("_{}", met.kwh15);
+                                        print!(">>>> LARGE >>>> _{}", met.kwh15);
                                         //allsel += met.kwh15;
                                     }
                                     //==== METER PHASE

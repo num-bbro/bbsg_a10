@@ -326,7 +326,12 @@ pub fn ben_bess_calc(
     let bess = if sola > maxbess { maxbess } else { sola };
     */
 
-    let mut bess = 0f32;
+    if true {
+        return (sub_save, svg_save, dif_save, eng_save, 0f32);
+    }
+
+    //let mut bess = 0f32;
+    let bess;
     if let Some(rpf) = rpfm.get(&sbas.sbid) && rpf.rpf_avg>1.0 && rpf.rpf_fre>100 {
         /*
         println!(

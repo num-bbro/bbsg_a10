@@ -783,7 +783,7 @@ pub const EV_PRV_ADJ_2: [(&str, f64, f64); 26] = [
     ("สมุทรปราการ", 0.0, 15.0),
 ];
 
-pub const FIR_FLDS: [VarType; 26] = [
+pub const FIR_FLDS: [VarType; 27] = [
     VarType::FirEvChgThb,
     VarType::FirEtChgThb,
     VarType::FirEbChgThb,
@@ -812,6 +812,7 @@ pub const FIR_FLDS: [VarType; 26] = [
     VarType::FirComplainSave,
     VarType::FirAssetValue,
     VarType::FirDataEntrySave,
+    VarType::AllSellTr,
     //VarType::FirTpaThb,
 ];
 
@@ -851,7 +852,7 @@ pub const OPEX_FLDS: [VarType; 6] = [
     VarType::CstCommOp,
 ];
 
-pub const SHOW_FLDS: [VarType; 91] = [
+pub const SHOW_FLDS: [VarType; 101] = [
     VarType::FirEvChgThb,
     VarType::FirEtChgThb,
     VarType::FirEbChgThb,
@@ -948,6 +949,17 @@ pub const SHOW_FLDS: [VarType; 91] = [
     VarType::TpoAdd,
     VarType::SvgAdd,
     VarType::EcuAdd,
+    // add #2
+    VarType::PkSelPowPhsAKw,
+    VarType::PkSelPowPhsBKw,
+    VarType::PkSelPowPhsCKw,
+    VarType::PkSelPowPhsAvg,
+    VarType::PkSelPowPhsMax,
+    VarType::UnbalPowRate,
+    VarType::TransLossKw,
+    VarType::UnbalPowLossKw,
+    VarType::CntTrUnbalLoss,
+    VarType::CntTrSatLoss,
 ];
 
 pub const SHOW_FLDS2: [VarType; 32] = [

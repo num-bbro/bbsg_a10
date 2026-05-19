@@ -25,7 +25,7 @@ pub enum DbfVal {
     None,
 }
 
-fn db_rec(rc: dbase::Record) -> HashMap<String, DbfVal> {
+pub fn db_rec(rc: dbase::Record) -> HashMap<String, DbfVal> {
     let mut rec = HashMap::new();
     for (nm, va) in rc {
         let v = match &va {
@@ -501,8 +501,8 @@ pub fn read_meter1() -> Result<(), Box<dyn Error>> {
 
 use crate::utl::load_xlsx;
 
-const BRANCH_PREF_PRV: &str = "การไฟฟ้าส่วนภูมิภาคจังหวัด";
-const BRANCH_PREF_BRN: &str = "การไฟฟ้าส่วนภูมิภาคสาขา";
+pub const BRANCH_PREF_PRV: &str = "การไฟฟ้าส่วนภูมิภาคจังหวัด";
+pub const BRANCH_PREF_BRN: &str = "การไฟฟ้าส่วนภูมิภาคสาขา";
 
 pub const BRANCH_INFO_FILE: &str = "/mnt/e/CHMBACK/pea-data/pea2/branch_infos.bin";
 pub type PeaBranchInfo = (Vec<PeaBranch>,HashMap<String,usize>);
@@ -526,7 +526,7 @@ pub struct PeaBranch {
     pub prov_memb: Vec<usize>,
 }
 
-const AOJ_ERR1: [&str;32] = [
+pub const AOJ_ERR1: [&str;32] = [
 "0901101",
 "0719101",
 "0717101",
@@ -979,7 +979,6 @@ pub struct EconCalcInfo {
 }
 
 use crate::sty3::AssSumEnum;
-
 pub fn econ_calc_file(vwnm: &str) -> Result<(), Box<dyn Error>> {
     archi_extract0(ARCHI_INPUT)?;
     let xml = archi_xml_read0()?;

@@ -10,6 +10,46 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let now = std::time::SystemTime::now();
     let a1 = env::args().nth(1).unwrap_or("?".to_string());
     match a1.as_str() {
+        "T3" => {
+            // check evcurv
+            let vwnm = env::args().nth(2).unwrap_or("SGDT-A11".to_string());
+            bb::utl8::a_tee_req_03(&vwnm)?;
+        }
+        "T2" => {
+            // check evcurv
+            let vwnm = env::args().nth(2).unwrap_or("SGDT-A11".to_string());
+            bb::utl8::a_tee_req_02(&vwnm)?;
+        }
+        "T1" => {
+            // check evcurv
+            let vwnm = env::args().nth(2).unwrap_or("SGDT-A11".to_string());
+            bb::utl8::a_tee_req_01(&vwnm)?;
+        }
+        "P1" => {
+            // check evcurv
+            let vwnm = env::args().nth(2).unwrap_or("SGDT-A11".to_string());
+            bb::utl8::apao_req_01(&vwnm)?;
+        }
+        "B8" => {
+            // check evcurv
+            let vwnm = env::args().nth(2).unwrap_or("SGDT-A11".to_string());
+            bb::utl8::draw_brn_task4(&vwnm)?;
+        }
+        "B7" => {
+            // check evcurv
+            let vwnm = env::args().nth(2).unwrap_or("SGDT-A11".to_string());
+            bb::utl8::draw_brn_task3(&vwnm)?;
+        }
+        "B6" => {
+            // check evcurv
+            let vwnm = env::args().nth(2).unwrap_or("SGDT-A11".to_string());
+            bb::utl8::draw_brn_task2(&vwnm)?;
+        }
+        "B5" => {
+            // check evcurv
+            let vwnm = env::args().nth(2).unwrap_or("SGDT-A11".to_string());
+            bb::utl8::draw_brn_task1(&vwnm)?;
+        }
         "B23" => {
             // Smart Grid Stage 3 summarize transformer into subst, branch
             let coreno = env::args().nth(2).unwrap_or("9".to_string());
